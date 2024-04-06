@@ -24,8 +24,12 @@ def phase_vocoder(input_signal: np.ndarray, stretch_factor: float) ->  np.ndarra
         frame = input_signal[i:i + window_size]
         frames.append(frame)
 
+    # Применение оконной функции к каждому кадру
+    window = np.hanning(window_size)
+    frames *= window
+
     # Применение быстрого преобразования Фурье к каждому фрагменту
-    spectra = [librosa.stft(frame) for frame in frames]
+    spectra = [np.fft.fft(frame) for frame in frames]
 
     # Создание нового массива для выходного сигнала
     output_signal = np.zeros(int(len(input_signal) * stretch_factor))
