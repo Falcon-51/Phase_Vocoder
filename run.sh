@@ -2,7 +2,7 @@
 
 # Проверка количества переданных аргументов
 if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <input.wav> <output.wav> <stretch_factor>"
+    echo "Usage: $0 <input.wav> <output.wav> <time_stretch_ratio>"
     exit 1
 fi
 

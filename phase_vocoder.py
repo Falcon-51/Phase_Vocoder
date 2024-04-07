@@ -1,21 +1,22 @@
 import numpy as np
 import soundfile as sf
 import sys
-import librosa 
 
 
-def phase_vocoder(input_signal: np.ndarray, stretch_factor: float) ->  np.ndarray:
+def phase_vocoder(input_signal: np.ndarray, time_stretch_ratio: float) ->  np.ndarray:
     """
-    input_signal - Входной аудиосигнал.
-    stretch_factor - Коэффициент растяжения/сжатия звука.
-    
+    input_signal : np.ndarray
+            Входной одноканальный аудиосигнал;
+    time_stretch_ratio : float
+            Коэффициент растяжения/сжатия звука;
+            При time_stretch_ratio > 1 аудиофайл растягивается, при 0 < time_stretch_ratio <= 1 сжимается
     Возвращает измененный аудиосигнал по фазе.
     """
-    # Выбран оптимальный размер окна 256. С таким параметром достигается наилучшее качество выходящего аудиосигнала.
-    # В соответствии с алгоритмом перекрытие составляет 75% => длина сдвига будет 256 / 4
+    # Размер окна 1024.
+    # В соответствии с алгоритмом перекрытие составляет 75% => длина сдвига будет 1024 / 4
 
-    window_size = 256
-    hop_size = 64
+    window_size = 1024
+    hop_size = 256
 
 
     # Разделение входного сигнала на перекрывающиеся фрагменты
@@ -32,13 +33,13 @@ def phase_vocoder(input_signal: np.ndarray, stretch_factor: float) ->  np.ndarra
     spectra = [np.fft.fft(frame) for frame in frames]
 
     # Создание нового массива для выходного сигнала
-    output_signal = np.zeros(int(len(input_signal) * stretch_factor))
+    output_signal = np.zeros(int(len(input_signal) * time_stretch_ratio))
 
     # Интерполяция Фурье-преобразований и создание выходного сигнала
     for i in range(len(spectra) - 1):
 
         # Вычисляем параметр alpha для интерполяции между текущим и следующим спектрами
-        alpha = (i * hop_size) * stretch_factor % 1
+        alpha = (i * hop_size) * time_stretch_ratio % 1
 
         # Производим интерполяцию между двумя спектрами с учетом параметра alpha
         spectra_interp = (1 - alpha) * spectra[i] + alpha * spectra[i + 1]
@@ -47,11 +48,11 @@ def phase_vocoder(input_signal: np.ndarray, stretch_factor: float) ->  np.ndarra
         output_frame = np.real(np.fft.ifft(spectra_interp))
 
         # Определяем начало и конец области в выходном сигнале
-        output_start = int(i * hop_size * stretch_factor)
+        output_start = int(i * hop_size * time_stretch_ratio)
         output_end = min(output_start + window_size, len(output_signal))
 
         # Полученный фрейм позиционируется в выходном сигнале output_signal с учетом растяжения и размера окна.
-        output_signal[output_start:output_end] += output_frame[:output_end - output_start]
+        output_signal[output_start:output_end] += output_frame[:output_end - output_start] 
 
     return output_signal
 
@@ -62,16 +63,12 @@ def main():
     # Переданные аргументы
     input_file = sys.argv[1]
     output_file = sys.argv[2]
-    stretch_factor = float(sys.argv[3])
-
-    # input_file = 'input.wav'
-    # output_file = 'result.wav'
-    # stretch_factor = 0.5
+    time_stretch_ratio = float(sys.argv[3])
 
     # Загрузка входного аудиофайла
     input_audio, fs = sf.read(input_file)
     # Применение алгоритма фазового вокодера
-    output_audio = phase_vocoder(input_audio, stretch_factor)
+    output_audio = phase_vocoder(input_audio, time_stretch_ratio)
 
     # Сохранение результирующего аудиофайла
     sf.write(output_file, output_audio, fs)
